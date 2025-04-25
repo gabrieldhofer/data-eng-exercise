@@ -19,7 +19,7 @@ else:
 #print(json.dumps(data_dict, indent=4))
 
 for obj in data_dict:
-    print(obj)
+    print(json.dumps(obj, indent=2))
     theme = obj['theme'][0]
     print(f"THEME: {theme}")
     time.sleep(1)
