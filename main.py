@@ -41,4 +41,40 @@ def main():
 
   case_converted.show()
 
-main()
+#main()
+
+
+import airflow
+from datetime import datetime, timedelta
+#from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
+
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(year=2025, month=4, day=25),
+    'email': ['gabrieldhofer@gmail.com'],
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+    #'schedule_interval': '@daily',
+    'schedule_interval':'*/2 * * * *',
+}
+
+dag = DAG(
+    'tutorial', 
+    description='Retrieving Hospital themed data daily',
+    catchup=False, 
+    default_args=default_args
+)
+
+# Define Python task
+main_task = PythonOperator(
+    task_id='main_daily',  # Unique task ID
+    python_callable=main,  # Function to execute
+    dag=dag,  # Assign task to DAG
+)
+
+
