@@ -13,12 +13,12 @@ def get_data() -> list:
   response = requests.get(URL)
   data_dict = {}
   if response.status_code == 200:
-      try:
-          return response.json()
-      except ValueError:
-          print("Response is not in JSON format")
+    try:
+      return response.json()
+    except ValueError:
+      print("Response is not in JSON format")
   else:
-      print(f"Request failed with status code {response.status.code}")
+    print(f"Request failed with status code {response.status.code}")
 
 
 def filter_by_hospitals_theme(df) -> list:
@@ -29,8 +29,8 @@ def filter_by_hospitals_theme(df) -> list:
 def cols_to_snake_case(df) -> None:
   """ convert column names to snake case """
   for col in df.columns:
-      new_col = re.sub(r"(?<!^)(?=[A-Z])", "_", col).lower()
-      df = df.withColumnRenamed(col, new_col)
+    new_col = re.sub(r"(?<!^)(?=[A-Z])", "_", col).lower()
+    df = df.withColumnRenamed(col, new_col)
   return df
 
 
