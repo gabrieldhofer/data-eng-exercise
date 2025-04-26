@@ -1,9 +1,10 @@
 import requests
 import json
 import time
-## from pyspark.sql import SparkSession
-## from pyspark.sql import Row
-## from pyspark.sql.functions import array_contains
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+from pyspark.sql.functions import array_contains
+from pyspark.sql import DataFrame
 import re
 
 def get_data() -> list:
@@ -38,50 +39,21 @@ def main():
   df = spark.createDataFrame(get_data())
   filtered = filter_by_hospitals_theme(df)
   case_converted = cols_to_snake_case(filtered)
-
   case_converted.show()
 
-#main()
+# --------------------------------------------------------
+#                       Scheduling
+# --------------------------------------------------------
+# https://schedule.readthedocs.io/en/stable/examples.html
+# https://schedule.readthedocs.io/en/stable/timezones.html
 
 import schedule
+from pytz import timezone
+import datetime
 
-def job():
-    print("**job**")
+schedule.every().day.at("12:11:00", timezone("America/Chicago")).do(main)
 
-schedule.every(5).seconds.do(job)
-
-
-## import airflow
-## from datetime import datetime, timedelta
-## #from airflow.operators.python import PythonOperator
-## from airflow.providers.standard.operators.python import PythonOperator
-## 
-## 
-## default_args = {
-##     'owner': 'airflow',
-##     'depends_on_past': False,
-##     'start_date': datetime(year=2025, month=4, day=25),
-##     'email': ['gabrieldhofer@gmail.com'],
-##     'email_on_failure': False,
-##     'email_on_retry': False,
-##     'retries': 1,
-##     'retry_delay': timedelta(minutes=5),
-##     #'schedule_interval': '@daily',
-##     'schedule_interval':'*/2 * * * *',
-## }
-## 
-## dag = DAG(
-##     'tutorial', 
-##     description='Retrieving Hospital themed data daily',
-##     catchup=False, 
-##     default_args=default_args
-## )
-## 
-## # Define Python task
-## main_task = PythonOperator(
-##     task_id='main_daily',  # Unique task ID
-##     python_callable=main,  # Function to execute
-##     dag=dag,  # Assign task to DAG
-## )
-
+while True:
+  schedule.run_pending()
+  time.sleep(30)
 
