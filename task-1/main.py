@@ -183,27 +183,13 @@ def upsert(tgt_df, src_df):
       how="left_anti"
     )
 
-  # Identify updates
   updates = src_df.alias("src")\
     .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
     .filter(col("src.modified") >= col("tgt.modified"))
   #.withColumn("current_tsp", current_timestamp())
 
-  # Keep rows that weren't in the new df (no deletions)
   unchanged = tgt_df.alias("tgt")\
     .join(src_df.alias("src"), on="identifier", how="left_anti")
-
-  print("inserts: new records in SRC dataframe")
-  inserts.show()
-
-  print("""
-    cdc_existing: records that were already in file, but are also in the SRC
-    df and have a more recent 'modified' tsp""")
-  updates.show()
-
-  print("""unchanged: records that were already in TGT, and aren't
-    being updated""")
-  unchanged.show()
 
   src_cols = ["src." + x for x in cols]
   tgt_cols = ["tgt." + x for x in cols]
@@ -215,9 +201,7 @@ def upsert(tgt_df, src_df):
   download(inserts)
   download(updates)
 
-  #asyncio.run(download(inserts.union(updates)))
   return inserts.union(updates).union(unchanged)
-
 
 
 def job():
