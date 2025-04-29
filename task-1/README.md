@@ -3,23 +3,16 @@ data-engineering-assessment
 
 This program was developed in Google Colab.
 
-Usage:
+Install dependencies:
 
-    $ pip install pyspark
-    $ pip install schedule
+    $ pip install -r ./requirements.txt
 
-Check the requirements.txt file for more dependencies.
-
-Before running the program, write the CSV file header to a file called "data.csv" in 
-the program's working directory.
-
-    $ sh init.sh
-
-    OR
+    $ make clean
 
     $ make init
 
-Then, run the "make" command.
+Then, run the "make" command to run main.py.
 
     $ make
+
 
