@@ -3,6 +3,8 @@ data-engineering-assessment
 
 This program was developed in Google Colab.
 
+Usage:
+
     $ pip install pyspark
     $ pip install schedule
 
@@ -20,6 +22,4 @@ the program's working directory.
 Then, run the "make" command.
 
     $ make
-
-
 
