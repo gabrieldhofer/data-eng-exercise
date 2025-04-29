@@ -80,6 +80,7 @@ schema2 = StructType([
   StructField('nextUpdateDate', StringType(), True)
 ])
 
+
 def get_data() -> list:
   """ Retrieve data via HTTP GET request """
   URL = "http://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items"
@@ -215,7 +216,6 @@ def upsert(tgt_df, src_df):
 
   #asyncio.run(download(inserts.union(updates)))
   return inserts.union(updates).union(unchanged)
-  
 
 
 def job():
@@ -256,5 +256,5 @@ def main(data_location="data.csv"):
     schedule.run_pending()
     time.sleep(1)
 
-#main()
-job()
+main()
+#job()
