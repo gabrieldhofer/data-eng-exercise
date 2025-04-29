@@ -12,6 +12,7 @@ from pytz import timezone
 import datetime
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
 from pyspark.sql.functions import col
+import pandas
 
 
 cols = [
@@ -99,15 +100,12 @@ def read_tgt_df(spark, data_location="data.csv"):
     #inferSchema=True
   )
   
-
-
 def write_tgt_df(tgt_df, data_location="data.csv"):
-  tgt_df.write.csv(
-    data_location, 
-    header=True, 
-    mode="overwrite"
-  )
+  pandas_df = tgt_df.toPandas()
 
+  # Write to CSV file
+  pandas_df.to_csv("data.csv", index=False)
+  
 
 def upsert(tgt_df, src_df):
 
