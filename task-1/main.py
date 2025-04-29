@@ -155,10 +155,12 @@ def job():
   tgt_df = read_tgt_df(spark)
   print("1. TGT_DF")
   tgt_df.show()
+  print("row count: " + str(tgt_df.count()))
 
   src_df = spark.createDataFrame(get_data(), schema2)
   print("2. SRC_DF")
   src_df.show()
+  print("row count: " + str(src_df.count()))
   
   filtered = filter_by_hospitals_theme(src_df)
   print("3. filtered")
