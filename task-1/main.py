@@ -122,7 +122,7 @@ def write_tgt_df(tgt_df, data_location="data.csv"):
   
 
 def download(df):
-  """ author: Gabriel Hofer """
+  """ Author: Gabriel Hofer """
   time.sleep(5)
   print("downloading in 5 seconds...")
   for row in df.rdd.collect():
@@ -154,6 +154,8 @@ def download(df):
 
 def upsert(tgt_df, src_df):
   """
+    Author: Gabriel Hofer
+
     This function 'merges' the target data to the source data.
 
     The source dataframe is the data that was retrieved via the most recent 
@@ -218,7 +220,7 @@ def upsert(tgt_df, src_df):
 
 
 def job():
-  """ author: Gabriel Hofer """
+  """ Author: Gabriel Hofer """
   spark = SparkSession.builder.getOrCreate()
   tgt_df = read_tgt_df(spark)
   print("1. TGT_DF")
