@@ -3,3 +3,6 @@ default:
 
 2:
 	python3 scheduling.py
+
+init:
+	sh ./init.sh
