@@ -123,6 +123,8 @@ def write_tgt_df(tgt_df, data_location="data.csv"):
 
 def download(df):
   """ author: Gabriel Hofer """
+  time.sleep(5)
+  print("downloading in 5 seconds...")
   for row in df.rdd.collect():
     print(row)
     distribution = row.distribution
@@ -148,7 +150,6 @@ def download(df):
               writer.writerow(row)
               print("writing row to file:", end=' ')
               print(row)
-    time.sleep(10)
 
 
 def upsert(tgt_df, src_df):
