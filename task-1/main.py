@@ -15,7 +15,6 @@ from pyspark.sql.functions import col
 import pandas
 from pyspark.sql import Row
 import csv
-import asyncio
 
 
 cols = [
@@ -85,7 +84,6 @@ def get_data() -> list:
   """ Retrieve data via HTTP GET request """
   URL = "http://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items"
   response = requests.get(URL)
-  data_dict = {}
   if response.status_code == 200:
       try:
           return response.json()
@@ -123,10 +121,10 @@ def write_tgt_df(tgt_df, data_location="data.csv"):
   pandas_df.to_csv("data.csv", index=False)
   
 
-async def download(df):
+def download(df):
   for row in df.rdd.collect():
     print(row)
-    distribution = row[6]
+    distribution = row[5]
     separator = ','
     pairs = re.split(separator, distribution.strip())
     for pair in pairs:
@@ -143,14 +141,15 @@ async def download(df):
           my_list = list(cr)
           for row in my_list:
             print(row)
-    time.sleep(20)
+    time.sleep(10)
 
 
 def upsert(tgt_df, src_df):
   """
     This function 'merges' the target data to the source data.
 
-    The source dataframe is the data that was retrieved via the most recent HTTP request.
+    The source dataframe is the data that was retrieved via the most recent 
+    HTTP request.
 
     The target dataframe is read from a file stored locally.
 
@@ -177,18 +176,24 @@ def upsert(tgt_df, src_df):
   updates = src_df.alias("src")\
     .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
     .filter(col("src.modified") >= col("tgt.modified"))
-  #.withColumn("current_tsp", current_timestamp())  # Update timestamp for updates
+  #.withColumn("current_tsp", current_timestamp())
 
   # Keep rows that weren't in the new df (no deletions)
-  unchanged = tgt_df.alias("tgt").join(src_df.alias("src"), on="identifier", how="left_anti")
+  unchanged = tgt_df.alias("tgt")\
+    .join(src_df.alias("src"), on="identifier", how="left_anti")
 
   print("inserts: new records in SRC dataframe")
   inserts.show()
-  print("cdc_existing: records that were already in file, but are also in the SRC df and have a more recent 'modified' tsp")
+
+  print("""
+    cdc_existing: records that were already in file, but are also in the SRC 
+    df and have a more recent 'modified' tsp""")
   updates.show()
-  print("unchanged: records that were already in TGT, and aren't being updated")
+
+  print("""unchanged: records that were already in TGT, and aren't 
+    being updated""")
   unchanged.show()
-  
+
   src_cols = ["src." + x for x in cols]
   tgt_cols = ["tgt." + x for x in cols]
   
@@ -196,7 +201,10 @@ def upsert(tgt_df, src_df):
   updates = updates.select(*src_cols)
   unchanged = unchanged.select(*tgt_cols)
 
-  async.run(download(inserts.union(updates)))
+  download(inserts)
+  download(updates)
+
+  #asyncio.run(download(inserts.union(updates)))
   return inserts.union(updates).union(unchanged)
   
 
