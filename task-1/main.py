@@ -124,23 +124,18 @@ def write_tgt_df(tgt_df, data_location="data.csv"):
 
 def download(df):
   """ Author: Gabriel Hofer """
-  time.sleep(5)
-  print("downloading in 5 seconds...")
+  print("downloading in 3 seconds...")
+  time.sleep(3)
   for row in df.rdd.collect():
-    print(row)
     distribution = row.distribution
     identifier = row.identifier
     output_filepath = identifier + ".csv"
     separator = ','
     pairs = re.split(separator, distribution.strip())
     for pair in pairs:
-      print("pair: " + pair)
       pattern = r"downloadURL=(https?://\S+|www\.\S+)"
       mtch = re.search(pattern, pair)
       if mtch:
-        print("mtch.group(0): " + str(mtch.group(0)))
-        print("mtch.group(1): " + str(mtch.group(1)))
-        print(mtch.group(1))
         with requests.Session() as s:
           download = s.get(mtch.group(1))
           decoded_content = download.content.decode('utf-8')
@@ -208,12 +203,12 @@ def job():
   """ Author: Gabriel Hofer """
   spark = SparkSession.builder.getOrCreate()
   tgt_df = read_tgt_df(spark)
-  print("1. TGT_DF")
+  print("1. tgt_df")
   tgt_df.show()
   print("row count: " + str(tgt_df.count()))
 
   src_df = spark.createDataFrame(get_data(), schema2)
-  print("2. SRC_DF")
+  print("2. src_df")
   src_df.show()
   print("row count: " + str(src_df.count()))
 
@@ -228,7 +223,6 @@ def job():
   new_tgt_df = upsert(tgt_df, case_converted)
   print("5. new_tgt_df")
   new_tgt_df.show()
-
   print("row count: " + str(new_tgt_df.count()))
 
   write_tgt_df(new_tgt_df)
