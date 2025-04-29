@@ -148,7 +148,6 @@ def upsert(tgt_df, src_df):
   return cdc_result
 
 
-
 def job():
   """ author: Gabriel Hofer """
   spark = SparkSession.builder.getOrCreate()
@@ -181,13 +180,11 @@ def job():
 
 
 def main(data_location="data.csv"):
-
-  # get new data every minute
-  #schedule.every(1).minute.at("17:32:00", timezone("America/Chicago")).do(job)
-  schedule.every(10).seconds.at("18:32:00", timezone("America/Chicago")).do(job)
+  #schedule.every(25).seconds.do(job)
+  schedule.every().day.at("20:43:00", timezone("America/Chicago")).do(job)
   while True:
     schedule.run_pending()
     time.sleep(1)
 
-#main()
-job()
+main()
+#job()
