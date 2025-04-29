@@ -18,66 +18,66 @@ import csv
 
 
 cols = [
-    "@type", 
-    "access_level", 
-    "bureau_code", 
-    "contact_point", 
-    "description", 
-    "distribution", 
-    "identifier", 
-    "issued", 
-    "keyword", 
-    "landing_page", 
-    "modified", 
-    "program_code", 
-    "publisher", 
-    "released", 
-    "theme", 
-    "title", 
-    "archive_exclude", 
-    "next_update_date"
+  "@type", 
+  "access_level", 
+  "bureau_code", 
+  "contact_point", 
+  "description", 
+  "distribution", 
+  "identifier", 
+  "issued", 
+  "keyword", 
+  "landing_page", 
+  "modified", 
+  "program_code", 
+  "publisher", 
+  "released", 
+  "theme", 
+  "title", 
+  "archive_exclude", 
+  "next_update_date"
 ]
 
 schema = StructType([
-    StructField('@type', StringType(), True), 
-    StructField('access_level', StringType(), True), 
-    StructField('bureau_code', StringType(), True), 
-    StructField('contact_point', StringType(), True), 
-    StructField('description', StringType(), True), 
-    StructField('distribution', StringType(), True), 
-    StructField('identifier', StringType(), True), 
-    StructField('issued', StringType(), True), 
-    StructField('keyword', StringType(), True), 
-    StructField('landing_page', StringType(), True), 
-    StructField('modified', StringType(), True), 
-    StructField('program_code', StringType(), True), 
-    StructField('publisher', StringType(), True), 
-    StructField('released', StringType(), True), 
-    StructField('theme', StringType(), True), 
-    StructField('title', StringType(), True), 
-    StructField('archive_exclude', BooleanType(), True), 
-    StructField('next_update_date', StringType(), True)
+  StructField('@type', StringType(), True), 
+  StructField('access_level', StringType(), True), 
+  StructField('bureau_code', StringType(), True), 
+  StructField('contact_point', StringType(), True), 
+  StructField('description', StringType(), True), 
+  StructField('distribution', StringType(), True), 
+  StructField('identifier', StringType(), True), 
+  StructField('issued', StringType(), True), 
+  StructField('keyword', StringType(), True), 
+  StructField('landing_page', StringType(), True), 
+  StructField('modified', StringType(), True), 
+  StructField('program_code', StringType(), True), 
+  StructField('publisher', StringType(), True), 
+  StructField('released', StringType(), True), 
+  StructField('theme', StringType(), True), 
+  StructField('title', StringType(), True), 
+  StructField('archive_exclude', BooleanType(), True), 
+  StructField('next_update_date', StringType(), True)
 ])
 
 schema2 = StructType([
-    StructField('@type', StringType(), True), 
-    StructField('accessLevel', StringType(), True), 
-    StructField('bureauCode', StringType(), True), 
-    StructField('contactPoint', StringType(), True), 
-    StructField('description', StringType(), True), 
-    StructField('distribution', StringType(), True), 
-    StructField('identifier', StringType(), True), 
-    StructField('issued', StringType(), True), 
-    StructField('keyword', StringType(), True), 
-    StructField('landingPage', StringType(), True), 
-    StructField('modified', StringType(), True), 
-    StructField('programCode', StringType(), True), 
-    StructField('publisher', StringType(), True), 
-    StructField('released', StringType(), True), 
-    StructField('theme', StringType(), True), 
-    StructField('title', StringType(), True), 
-    StructField('archiveExclude', BooleanType(), True), 
-    StructField('nextUpdateDate', StringType(), True)
+  StructField('@type', StringType(), True), 
+  StructField('accessLevel', StringType(), True), 
+  StructField('bureauCode', StringType(), True), 
+  StructField('contactPoint', StringType(), True), 
+  StructField('description', StringType(), True), 
+  StructField('distribution', StringType(), True), 
+  StructField('identifier', StringType(), True), 
+  StructField('issued', StringType(), True), 
+  StructField('keyword', StringType(), True), 
+  StructField('landingPage', StringType(), True), 
+  StructField('modified', StringType(), True), 
+  StructField('programCode', StringType(), True), 
+  StructField('publisher', StringType(), True), 
+  StructField('released', StringType(), True), 
+  StructField('theme', StringType(), True), 
+  StructField('title', StringType(), True), 
+  StructField('archiveExclude', BooleanType(), True), 
+  StructField('nextUpdateDate', StringType(), True)
 ])
 
 def get_data() -> list:
@@ -85,12 +85,12 @@ def get_data() -> list:
   URL = "http://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items"
   response = requests.get(URL)
   if response.status_code == 200:
-      try:
-          return response.json()
-      except ValueError:
-          print("Response is not in JSON format")
+    try:
+      return response.json()
+    except ValueError:
+      print("Response is not in JSON format")
   else:
-      print(f"Request failed with status code {response.status.code}")
+    print(f"Request failed with status code {response.status.code}")
 
 
 def filter_by_hospitals_theme(df) -> list:
@@ -148,8 +148,7 @@ def download(df):
             my_list = list(cr)
             for row in my_list:
               writer.writerow(row)
-              print("writing row to file:", end=' ')
-              print(row)
+              print("writing row to file:" + str(row))
 
 
 def upsert(tgt_df, src_df):
@@ -177,9 +176,9 @@ def upsert(tgt_df, src_df):
   """
   inserts = src_df.alias("src")\
     .join(
-        tgt_df.alias("tgt"), 
-        on="identifier", 
-        how="left_anti"
+      tgt_df.alias("tgt"), 
+      on="identifier", 
+      how="left_anti"
     )    
 
   # Identify updates
