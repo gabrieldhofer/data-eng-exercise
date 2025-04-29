@@ -104,8 +104,8 @@ def filter_by_hospitals_theme(df) -> list:
 def cols_to_snake_case(df) -> None:
   """ convert column names to snake case """
   for col in df.columns:
-      new_col = re.sub(r"(?<!^)(?=[A-Z])", "_", col).lower()
-      df = df.withColumnRenamed(col, new_col)
+    new_col = re.sub(r"(?<!^)(?=[A-Z])", "_", col).lower()
+    df = df.withColumnRenamed(col, new_col)
   return df
 
 
@@ -117,12 +117,13 @@ def read_tgt_df(spark, data_location="data.csv"):
     #inferSchema=True
   )
   
+
 def write_tgt_df(tgt_df, data_location="data.csv"):
   pandas_df = tgt_df.toPandas()
   pandas_df.to_csv("data.csv", index=False)
   
 
-def download(df):
+async def download(df):
   for row in df.rdd.collect():
     print(row)
     distribution = row[6]
@@ -165,7 +166,7 @@ def upsert(tgt_df, src_df):
     or increasing.
 
   """
-  cdc_updates = src_df.alias("src")\
+  inserts = src_df.alias("src")\
     .join(
         tgt_df.alias("tgt"), 
         on="identifier", 
@@ -173,35 +174,31 @@ def upsert(tgt_df, src_df):
     )    
 
   # Identify updates
-  cdc_existing = src_df.alias("src")\
+  updates = src_df.alias("src")\
     .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
     .filter(col("src.modified") >= col("tgt.modified"))
   #.withColumn("current_tsp", current_timestamp())  # Update timestamp for updates
 
   # Keep rows that weren't in the new df (no deletions)
-  cdc_retain = tgt_df.alias("tgt").join(src_df.alias("src"), on="identifier", how="left_anti")
+  unchanged = tgt_df.alias("tgt").join(src_df.alias("src"), on="identifier", how="left_anti")
 
-  print("cdc_updates: new records in SRC dataframe")
-  cdc_updates.show()
+  print("inserts: new records in SRC dataframe")
+  inserts.show()
   print("cdc_existing: records that were already in file, but are also in the SRC df and have a more recent 'modified' tsp")
-  cdc_existing.show()
-  print("cdc_retain: records that were already in TGT, and aren't being updated")
-  cdc_retain.show()
+  updates.show()
+  print("unchanged: records that were already in TGT, and aren't being updated")
+  unchanged.show()
   
-  download(cdc_updates)
-  download(cdc_existing)
-
   src_cols = ["src." + x for x in cols]
   tgt_cols = ["tgt." + x for x in cols]
   
-  cdc_updates = cdc_updates.select(*src_cols)
-  cdc_existing = cdc_existing.select(*src_cols)
-  cdc_retain = cdc_retain.select(*tgt_cols)
+  inserts = inserts.select(*src_cols)
+  updates = updates.select(*src_cols)
+  unchanged = unchanged.select(*tgt_cols)
 
-  cdc_result = cdc_updates\
-    .union(cdc_existing)\
-    .union(cdc_retain)
-  return cdc_result
+  async.run(download(inserts.union(updates)))
+  return inserts.union(updates).union(unchanged)
+  
 
 
 def job():
