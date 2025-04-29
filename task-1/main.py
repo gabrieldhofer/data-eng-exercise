@@ -122,9 +122,12 @@ def write_tgt_df(tgt_df, data_location="data.csv"):
   
 
 def download(df):
+  """ author: Gabriel Hofer """
   for row in df.rdd.collect():
     print(row)
-    distribution = row[5]
+    distribution = row.distribution
+    identifier = row.identifier
+    output_filepath = identifier + ".csv"        
     separator = ','
     pairs = re.split(separator, distribution.strip())
     for pair in pairs:
@@ -138,9 +141,13 @@ def download(df):
           download = s.get(mtch.group(0))
           decoded_content = download.content.decode('utf-8')
           cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-          my_list = list(cr)
-          for row in my_list:
-            print(row)
+          with open(output_filepath, 'w', newline='') as outfile:
+            writer = csv.writer(outfile)
+            my_list = list(cr)
+            for row in my_list:
+              writer.writerow(row)
+              print("writing row to file:", end=' ')
+              print(row)
     time.sleep(10)
 
 
