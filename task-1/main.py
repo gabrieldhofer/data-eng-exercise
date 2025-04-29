@@ -119,16 +119,18 @@ def upsert(tgt_df, src_df):
 
   # Identify updates
   cdc_existing = src_df.alias("src")\
-    .join(tgt_df.alias("tgt"), on="identifier", how="inner")
-  cdc_existing.show()
-  #  .filter(col("src.modified") > col("tgt.modified"))\
+    .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
+    .filter(col("src.modified") >= col("tgt.modified"))
   #  .withColumn("current_tsp", current_timestamp())  # Update timestamp for updates
 
   # Keep rows that weren't in the new df (no deletions)
   cdc_retain = tgt_df.alias("tgt").join(src_df.alias("src"), on="identifier", how="left_anti")
 
+  print("cdc_updates: new records in SRC dataframe")
   cdc_updates.show()
+  print("cdc_existing: records that were already in file, but are also in the SRC df and have a more recent 'modified' tsp")
   cdc_existing.show()
+  print("cdc_retain: records that were already in TGT, and aren't being updated")
   cdc_retain.show()
   
   src_cols = ["src." + x for x in cols]
@@ -151,19 +153,26 @@ def job():
   """ author: Gabriel Hofer """
   spark = SparkSession.builder.getOrCreate()
   tgt_df = read_tgt_df(spark)
+  print("1. TGT_DF")
   tgt_df.show()
 
   src_df = spark.createDataFrame(get_data(), schema2)
+  print("2. SRC_DF")
   src_df.show()
   
   filtered = filter_by_hospitals_theme(src_df)
+  print("3. filtered")
   filtered.show()
 
   case_converted = cols_to_snake_case(filtered)
+  print("4. case_converted")
   case_converted.show()
   
   new_tgt_df = upsert(tgt_df, case_converted)
+  print("5. new_tgt_df")
   new_tgt_df.show()
+
+  print("row count: " + str(new_tgt_df.count()))
 
   write_tgt_df(new_tgt_df)
   spark.stop()
