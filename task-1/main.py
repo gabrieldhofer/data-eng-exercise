@@ -13,13 +13,28 @@ import datetime
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
 from pyspark.sql.functions import col
 import pandas
+from pyspark.sql import Row
 
 
 cols = [
-    "@type", "access_level", "bureau_code", "contact_point", "description", 
-    "distribution", "identifier", "issued", "keyword", "landing_page", 
-    "modified", "program_code", "publisher", "released", "theme", "title", 
-    "archive_exclude", "next_update_date"
+    "@type", 
+    "access_level", 
+    "bureau_code", 
+    "contact_point", 
+    "description", 
+    "distribution", 
+    "identifier", 
+    "issued", 
+    "keyword", 
+    "landing_page", 
+    "modified", 
+    "program_code", 
+    "publisher", 
+    "released", 
+    "theme", 
+    "title", 
+    "archive_exclude", 
+    "next_update_date"
 ]
 
 schema = StructType([
@@ -102,14 +117,45 @@ def read_tgt_df(spark, data_location="data.csv"):
   
 def write_tgt_df(tgt_df, data_location="data.csv"):
   pandas_df = tgt_df.toPandas()
-
-  # Write to CSV file
   pandas_df.to_csv("data.csv", index=False)
   
 
-def upsert(tgt_df, src_df):
+def download(df):
+  for row in df.rdd.collect():
+    print(row)
+    distribution = row[6]
+    url = row[6][0]
+    print("url: " + url)
+    print("distribution: " + distribution)
+    obj = json.loads('"' + distribution + '"') 
+    print("object: " + obj)  
+    print(type(obj))
+    downloadURL = obj[0]["downloadURL"]
+    print("downloadURL: " + downloadURL)
+    response = requests.get(downloadURL)
+    time.sleep(20)
 
-  # Perform CDC: Identify new rows
+
+def upsert(tgt_df, src_df):
+  """
+    This function 'merges' the target data to the source data.
+
+    The source dataframe is the data that was retrieved via the most recent HTTP request.
+
+    The target dataframe is read from a file stored locally.
+
+    If there are records not in the target dataframe but they do exist in the 
+    source dataframe, those new records are added to the target df.
+
+    if there are records in the target and source dataframes with matching
+    'identifiers' (column), then the record with the most recent 'modified' 
+    value is stored back into the resulting target dataframe.
+
+    Records are not deleted from the target or the source, i.e. the 
+    target dataframe and number of rows stored locally is always the same
+    or increasing.
+
+  """
   cdc_updates = src_df.alias("src")\
     .join(
         tgt_df.alias("tgt"), 
@@ -121,7 +167,7 @@ def upsert(tgt_df, src_df):
   cdc_existing = src_df.alias("src")\
     .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
     .filter(col("src.modified") >= col("tgt.modified"))
-  #  .withColumn("current_tsp", current_timestamp())  # Update timestamp for updates
+  #.withColumn("current_tsp", current_timestamp())  # Update timestamp for updates
 
   # Keep rows that weren't in the new df (no deletions)
   cdc_retain = tgt_df.alias("tgt").join(src_df.alias("src"), on="identifier", how="left_anti")
@@ -133,15 +179,16 @@ def upsert(tgt_df, src_df):
   print("cdc_retain: records that were already in TGT, and aren't being updated")
   cdc_retain.show()
   
+  download(cdc_updates)
+  download(cdc_existing)
+
   src_cols = ["src." + x for x in cols]
   tgt_cols = ["tgt." + x for x in cols]
   
-  # Align schemas
   cdc_updates = cdc_updates.select(*src_cols)
   cdc_existing = cdc_existing.select(*src_cols)
   cdc_retain = cdc_retain.select(*tgt_cols)
 
-  # Union for final CDC result
   cdc_result = cdc_updates\
     .union(cdc_existing)\
     .union(cdc_retain)
@@ -186,5 +233,5 @@ def main(data_location="data.csv"):
     schedule.run_pending()
     time.sleep(1)
 
-main()
-#job()
+#main()
+job()
