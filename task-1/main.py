@@ -14,6 +14,8 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 from pyspark.sql.functions import col
 import pandas
 from pyspark.sql import Row
+import csv
+import asyncio
 
 
 cols = [
@@ -124,15 +126,22 @@ def download(df):
   for row in df.rdd.collect():
     print(row)
     distribution = row[6]
-    url = row[6][0]
-    print("url: " + url)
-    print("distribution: " + distribution)
-    obj = json.loads('"' + distribution + '"') 
-    print("object: " + obj)  
-    print(type(obj))
-    downloadURL = obj[0]["downloadURL"]
-    print("downloadURL: " + downloadURL)
-    response = requests.get(downloadURL)
+    separator = ','
+    pairs = re.split(separator, distribution.strip())
+    for pair in pairs:
+      print("pair: " + pair)
+      pattern = r"https?://\S+|www\.\S+"
+      mtch = re.search(pattern, pair)
+      if mtch:
+        print("MATCH!")
+        print(mtch.group(0))
+        with requests.Session() as s:
+          download = s.get(mtch.group(0))
+          decoded_content = download.content.decode('utf-8')
+          cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+          my_list = list(cr)
+          for row in my_list:
+            print(row)
     time.sleep(20)
 
 
