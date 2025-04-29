@@ -11,6 +11,7 @@ import schedule
 from pytz import timezone
 import datetime
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
+from pyspark.sql.functions import col
 
 
 cols = [
@@ -78,7 +79,8 @@ def get_data() -> list:
 
 def filter_by_hospitals_theme(df) -> list:
   """ only return rows with theme containing 'Hospitals' """
-  return df.filter(array_contains(df.theme, 'Hospitals'))
+  #return df.filter(array_contains(df.theme, 'Hospitals'))
+  return df.filter(col("theme").contains("Hospitals"))
 
 
 def cols_to_snake_case(df) -> None:
@@ -94,6 +96,7 @@ def read_tgt_df(spark, data_location="data.csv"):
     data_location, 
     header=True, 
     schema=schema
+    #inferSchema=True
   )
   
 
@@ -152,7 +155,7 @@ def job():
   tgt_df = read_tgt_df(spark)
   tgt_df.show()
 
-  src_df = spark.createDataFrame(get_data())
+  src_df = spark.createDataFrame(get_data(), schema2)
   src_df.show()
   
   filtered = filter_by_hospitals_theme(src_df)
