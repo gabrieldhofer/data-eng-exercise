@@ -5,4 +5,4 @@ init:
 	sh ./init.sh
 
 clean:
-	rm data.csv
+	[ -e metadata.parquet ] && rm metadata.parquet
