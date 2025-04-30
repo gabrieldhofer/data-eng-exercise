@@ -140,8 +140,8 @@ def get_data() -> list:
 
 def filter_by_hospitals_theme(df) -> list:
   """ only return rows with theme containing 'Hospitals' """
-  #return df.filter(array_contains(df.theme, 'Hospitals'))
-  return df.filter(col("theme").contains("Hospitals"))
+  return df.filter(array_contains(df.theme, 'Hospitals'))
+  #return df.filter(col("theme").contains("Hospitals"))
 
 
 def cols_to_snake_case(df) -> None:
@@ -153,7 +153,8 @@ def cols_to_snake_case(df) -> None:
 
 
 def read_tgt_df(spark, data_location="metadata.parquet"):
-  return spark.read.parquet(data_location)
+  #return spark.read.parquet(data_location)
+  return spark.read.schema(schema).parquet(data_location)
   # return spark.read.csv(
   #   data_location,
   #   header=True,
