@@ -39,50 +39,6 @@ cols = [
 ]
 
 
-schema = StructType([
-  StructField('@type', StringType(), True),
-  StructField('access_level', StringType(), True),
-  StructField('bureau_code', StringType(), True),
-  StructField('contact_point', StringType(), True),
-  StructField('description', StringType(), True),
-  StructField('distribution', StringType(), True),
-  StructField('identifier', StringType(), True),
-  StructField('issued', StringType(), True),
-  StructField('keyword', StringType(), True),
-  StructField('landing_page', StringType(), True),
-  StructField('modified', StringType(), True),
-  StructField('program_code', StringType(), True),
-  StructField('publisher', StringType(), True),
-  StructField('released', StringType(), True),
-  StructField('theme', StringType(), True),
-  StructField('title', StringType(), True),
-  StructField('archive_exclude', BooleanType(), True),
-  StructField('next_update_date', StringType(), True)
-])
-
-
-schema2 = StructType([
-  StructField('@type', StringType(), True),
-  StructField('accessLevel', StringType(), True),
-  StructField('bureauCode', StringType(), True),
-  StructField('contactPoint', StringType(), True),
-  StructField('description', StringType(), True),
-  StructField('distribution', StringType(), True),
-  StructField('identifier', StringType(), True),
-  StructField('issued', StringType(), True),
-  StructField('keyword', StringType(), True),
-  StructField('landingPage', StringType(), True),
-  StructField('modified', StringType(), True),
-  StructField('programCode', StringType(), True),
-  StructField('publisher', StringType(), True),
-  StructField('released', StringType(), True),
-  StructField('theme', StringType(), True),
-  StructField('title', StringType(), True),
-  StructField('archiveExclude', BooleanType(), True),
-  StructField('nextUpdateDate', StringType(), True)
-])
-
-
 schema_snake = StructType([
   StructField('@type', StringType(), True), 
   StructField('access_level', StringType(), True), 
