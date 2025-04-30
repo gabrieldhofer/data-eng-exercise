@@ -40,54 +40,54 @@ cols = [
 
 
 schema_snake = StructType([
-  StructField('@type', StringType(), True), 
-  StructField('access_level', StringType(), True), 
-  StructField('bureau_code', ArrayType(StringType(), True), True), 
-  StructField('contact_point', MapType(StringType(), StringType(), True), True), 
-  StructField('description', StringType(), True), 
-  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True), 
-  StructField('identifier', StringType(), True), StructField('issued', StringType(), True), 
-  StructField('keyword', ArrayType(StringType(), True), True), 
-  StructField('landing_page', StringType(), True), 
-  StructField('modified', StringType(), True), 
-  StructField('program_code', ArrayType(StringType(), True), True), 
-  StructField('publisher', MapType(StringType(), StringType(), True), True), 
-  StructField('released', StringType(), True), 
-  StructField('theme', ArrayType(StringType(), True), True), 
-  StructField('title', StringType(), True), 
-  StructField('next_update_date', StringType(), True), 
+  StructField('@type', StringType(), True),
+  StructField('access_level', StringType(), True),
+  StructField('bureau_code', ArrayType(StringType(), True), True),
+  StructField('contact_point', MapType(StringType(), StringType(), True), True),
+  StructField('description', StringType(), True),
+  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True),
+  StructField('identifier', StringType(), True), StructField('issued', StringType(), True),
+  StructField('keyword', ArrayType(StringType(), True), True),
+  StructField('landing_page', StringType(), True),
+  StructField('modified', StringType(), True),
+  StructField('program_code', ArrayType(StringType(), True), True),
+  StructField('publisher', MapType(StringType(), StringType(), True), True),
+  StructField('released', StringType(), True),
+  StructField('theme', ArrayType(StringType(), True), True),
+  StructField('title', StringType(), True),
+  StructField('next_update_date', StringType(), True),
   StructField('archive_exclude', BooleanType(), True)
 ])
 
 
 schema_camel = StructType([
-  StructField('@type', StringType(), True), 
-  StructField('accessLevel', StringType(), True), 
-  StructField('bureauCode', ArrayType(StringType(), True), True), 
-  StructField('contactPoint', MapType(StringType(), StringType(), True), True), 
-  StructField('description', StringType(), True), 
-  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True), 
-  StructField('identifier', StringType(), True), StructField('issued', StringType(), True), 
-  StructField('keyword', ArrayType(StringType(), True), True), 
-  StructField('landingPage', StringType(), True), 
-  StructField('modified', StringType(), True), 
-  StructField('programCode', ArrayType(StringType(), True), True), 
-  StructField('publisher', MapType(StringType(), StringType(), True), True), 
-  StructField('released', StringType(), True), 
-  StructField('theme', ArrayType(StringType(), True), True), 
-  StructField('title', StringType(), True), 
-  StructField('nextUpdateDate', StringType(), True), 
+  StructField('@type', StringType(), True),
+  StructField('accessLevel', StringType(), True),
+  StructField('bureauCode', ArrayType(StringType(), True), True),
+  StructField('contactPoint', MapType(StringType(), StringType(), True), True),
+  StructField('description', StringType(), True),
+  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True),
+  StructField('identifier', StringType(), True), StructField('issued', StringType(), True),
+  StructField('keyword', ArrayType(StringType(), True), True),
+  StructField('landingPage', StringType(), True),
+  StructField('modified', StringType(), True),
+  StructField('programCode', ArrayType(StringType(), True), True),
+  StructField('publisher', MapType(StringType(), StringType(), True), True),
+  StructField('released', StringType(), True),
+  StructField('theme', ArrayType(StringType(), True), True),
+  StructField('title', StringType(), True),
+  StructField('nextUpdateDate', StringType(), True),
   StructField('archiveExclude', BooleanType(), True)
 ])
 
 
-def get_data() -> list:
+def get_data(schema):
   """ Retrieve data via HTTP GET request """
   URL = "http://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items"
   response = requests.get(URL)
   if response.status_code == 200:
     try:
-      return response.json()
+      return spark.createDataFrame(response.json(), schema)
     except ValueError:
       print("Response is not in JSON format")
   else:
@@ -191,12 +191,12 @@ def job():
   tgt_df = read_tgt_df(spark)
   print("1. TGT_DF")
   tgt_df.show(4)
-  print("row count: " + str(tgt_df.count()))
+  print("row count: " + str(tgt_df.count()), end="\n\n")
 
-  src_df = spark.createDataFrame(get_data(), schema_camel)
+  src_df = get_data(schema_camel)
   print("2. SRC_DF")
   src_df.show(4)
-  print("row count: " + str(src_df.count()))
+  print("row count: " + str(src_df.count()), end="\n\n")
 
   filtered = filter_by_hospitals_theme(src_df)
   print("3. filtered")
@@ -209,7 +209,7 @@ def job():
   new_tgt_df = upsert(tgt_df, case_converted)
   print("5. new_tgt_df")
   new_tgt_df.show(4)
-  print("row count: " + str(new_tgt_df.count()))
+  print("row count: " + str(new_tgt_df.count()), end="\n\n")
 
   write_tgt_df(new_tgt_df)
   spark.stop()
