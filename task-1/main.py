@@ -141,7 +141,6 @@ def get_data() -> list:
 def filter_by_hospitals_theme(df) -> list:
   """ only return rows with theme containing 'Hospitals' """
   return df.filter(array_contains(df.theme, 'Hospitals'))
-  #return df.filter(col("theme").contains("Hospitals"))
 
 
 def cols_to_snake_case(df) -> None:
@@ -153,50 +152,11 @@ def cols_to_snake_case(df) -> None:
 
 
 def read_tgt_df(spark, data_location="metadata.parquet"):
-  #return spark.read.parquet(data_location)
-  return spark.read.schema(schema).parquet(data_location)
-  # return spark.read.csv(
-  #   data_location,
-  #   header=True,
-  #   schema=schema_snake
-  #   #inferSchema=True
-  # )
+  return spark.read.schema(schema_snake).parquet(data_location)
+
 
 def write_tgt_df(tgt_df, data_location="metadata.parquet"):
   tgt_df.write.parquet(data_location, mode="overwrite", compression="snappy")
-  #pandas_df = tgt_df.toPandas()
-  #pandas_df.to_csv("metadata.parquet", index=False)
-
-
-def download2(df):
-  """ Author: Gabriel Hofer """
-  time.sleep(5)
-  print("downloading in 5 seconds...")
-  for row in df.rdd.collect():
-    print(row)
-    distribution = row.distribution
-    identifier = row.identifier
-    output_filepath = identifier + ".csv"
-    separator = ','
-    pairs = re.split(separator, distribution.strip())
-    for pair in pairs:
-      print("pair: " + pair)
-      pattern = r"downloadURL=(https?://\S+|www\.\S+)"
-      mtch = re.search(pattern, pair)
-      if mtch:
-        print("mtch.group(0): " + str(mtch.group(0)))
-        print("mtch.group(1): " + str(mtch.group(1)))
-        print(mtch.group(1))
-        with requests.Session() as s:
-          download = s.get(mtch.group(1))
-          decoded_content = download.content.decode('utf-8')
-          cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-          with open(output_filepath, 'w', newline='') as outfile:
-            writer = csv.writer(outfile)
-            my_list = list(cr)
-            for row in my_list:
-              writer.writerow(row)
-              print("writing row to file:" + str(row))
 
 
 def download(df):
@@ -243,19 +203,12 @@ def upsert(tgt_df, src_df):
 
   """
   inserts = src_df.alias("src")\
-    .join(
-      tgt_df.alias("tgt"),
-      on="identifier",
-      how="left_anti"
-    )
+    .join(tgt_df.alias("tgt"), on="identifier", how="left_anti")
 
-  # Identify updates
   updates = src_df.alias("src")\
     .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
     .filter(col("src.modified") >= col("tgt.modified"))
-  #.withColumn("current_tsp", current_timestamp())
 
-  # Keep rows that weren't in the new df (no deletions)
   unchanged = tgt_df.alias("tgt")\
     .join(src_df.alias("src"), on="identifier", how="left_anti")
 
@@ -269,8 +222,11 @@ def upsert(tgt_df, src_df):
   download(inserts)
   download(updates)
 
-  #asyncio.run(download(inserts.union(updates)))
-  return inserts.union(updates).union(unchanged)
+  try:
+    res = inserts.union(updates).union(unchanged)
+  except Exception as e:
+    print(e)
+  return res
 
 
 def job():
