@@ -117,8 +117,8 @@ def write_tgt_df(tgt_df, data_location="metadata.parquet"):
 
 def download(df):
   """ Author: Gabriel Hofer """
-  time.sleep(5)
   print("downloading in 5 seconds...")
+  time.sleep(5)
   for row in df.rdd.collect():
     print(row)
     downloadURL = row.distribution[0]['downloadURL']
