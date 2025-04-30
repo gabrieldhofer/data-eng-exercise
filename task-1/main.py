@@ -80,6 +80,49 @@ schema2 = StructType([
   StructField('nextUpdateDate', StringType(), True)
 ])
 
+schema_snake = StructType([
+  StructField('@type', StringType(), True), 
+  StructField('access_level', StringType(), True), 
+  StructField('bureau_code', ArrayType(StringType(), True), True), 
+  StructField('contact_point', MapType(StringType(), StringType(), True), True), 
+  StructField('description', StringType(), True), 
+  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True), 
+  StructField('identifier', StringType(), True), StructField('issued', StringType(), True), 
+  StructField('keyword', ArrayType(StringType(), True), True), 
+  StructField('landing_page', StringType(), True), 
+  StructField('modified', StringType(), True), 
+  StructField('program_code', ArrayType(StringType(), True), True), 
+  StructField('publisher', MapType(StringType(), StringType(), True), True), 
+  StructField('released', StringType(), True), 
+  StructField('theme', ArrayType(StringType(), True), True), 
+  StructField('title', StringType(), True), 
+  StructField('next_update_date', StringType(), True), 
+  StructField('archive_exclude', BooleanType(), True)
+])
+
+schema_camel = StructType([
+  StructField('@type', StringType(), True), 
+  StructField('accessLevel', StringType(), True), 
+  StructField('bureauCode', ArrayType(StringType(), True), True), 
+  StructField('contactPoint', MapType(StringType(), StringType(), True), True), 
+  StructField('description', StringType(), True), 
+  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True), 
+  StructField('identifier', StringType(), True), StructField('issued', StringType(), True), 
+  StructField('keyword', ArrayType(StringType(), True), True), 
+  StructField('landingPage', StringType(), True), 
+  StructField('modified', StringType(), True), 
+  StructField('programCode', ArrayType(StringType(), True), True), 
+  StructField('publisher', MapType(StringType(), StringType(), True), True), 
+  StructField('released', StringType(), True), 
+  StructField('theme', ArrayType(StringType(), True), True), 
+  StructField('title', StringType(), True), 
+  StructField('nextUpdateDate', StringType(), True), 
+  StructField('archiveExclude', BooleanType(), True)
+])
+
+
+
+
 
 def get_data() -> list:
   """ Retrieve data via HTTP GET request """
@@ -108,34 +151,39 @@ def cols_to_snake_case(df) -> None:
   return df
 
 
-def read_tgt_df(spark, data_location="data.csv"):
+def read_tgt_df(spark, data_location="metadata.parquet"):
   return spark.read.csv(
     data_location,
     header=True,
-    schema=schema
+    schema=schema_snake
     #inferSchema=True
   )
 
 
-def write_tgt_df(tgt_df, data_location="data.csv"):
+def write_tgt_df(tgt_df, data_location="metadata.parquet"):
   pandas_df = tgt_df.toPandas()
-  pandas_df.to_csv("data.csv", index=False)
+  pandas_df.to_csv("metadata.parquet", index=False)
 
 
-def download(df):
+def download2(df):
   """ Author: Gabriel Hofer """
-  print("downloading in 3 seconds...")
-  time.sleep(3)
+  time.sleep(5)
+  print("downloading in 5 seconds...")
   for row in df.rdd.collect():
+    print(row)
     distribution = row.distribution
     identifier = row.identifier
     output_filepath = identifier + ".csv"
     separator = ','
     pairs = re.split(separator, distribution.strip())
     for pair in pairs:
+      print("pair: " + pair)
       pattern = r"downloadURL=(https?://\S+|www\.\S+)"
       mtch = re.search(pattern, pair)
       if mtch:
+        print("mtch.group(0): " + str(mtch.group(0)))
+        print("mtch.group(1): " + str(mtch.group(1)))
+        print(mtch.group(1))
         with requests.Session() as s:
           download = s.get(mtch.group(1))
           decoded_content = download.content.decode('utf-8')
@@ -146,6 +194,37 @@ def download(df):
             for row in my_list:
               writer.writerow(row)
               print("writing row to file:" + str(row))
+
+
+def download(df):
+  """ Author: Gabriel Hofer """
+  time.sleep(5)
+  print("downloading in 5 seconds...")
+  for row in df.rdd.collect():
+    print(row)
+    downloadURL = row.distribution[0]['downloadURL']
+    identifier = row.identifier
+    output_filepath = identifier + ".csv"
+    # separator = ','
+    # pairs = re.split(separator, distribution.strip())
+    # for pair in pairs:
+    #   print("pair: " + pair)
+    #   pattern = r"downloadURL=(https?://\S+|www\.\S+)"
+    #   mtch = re.search(pattern, pair)
+    #   if mtch:
+    #     print("mtch.group(0): " + str(mtch.group(0)))
+    #     print("mtch.group(1): " + str(mtch.group(1)))
+    #     print(mtch.group(1))
+    with requests.Session() as s:
+      download = s.get(downloadURL)
+      decoded_content = download.content.decode('utf-8')
+      cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+      with open(output_filepath, 'w', newline='') as outfile:
+        writer = csv.writer(outfile)
+        my_list = list(cr)
+        for row in my_list:
+          writer.writerow(row)
+          print("writing row to file:" + str(row))
 
 
 def upsert(tgt_df, src_df):
@@ -178,11 +257,13 @@ def upsert(tgt_df, src_df):
       how="left_anti"
     )
 
+  # Identify updates
   updates = src_df.alias("src")\
     .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
     .filter(col("src.modified") >= col("tgt.modified"))
   #.withColumn("current_tsp", current_timestamp())
 
+  # Keep rows that weren't in the new df (no deletions)
   unchanged = tgt_df.alias("tgt")\
     .join(src_df.alias("src"), on="identifier", how="left_anti")
 
@@ -196,6 +277,7 @@ def upsert(tgt_df, src_df):
   download(inserts)
   download(updates)
 
+  #asyncio.run(download(inserts.union(updates)))
   return inserts.union(updates).union(unchanged)
 
 
@@ -203,33 +285,34 @@ def job():
   """ Author: Gabriel Hofer """
   spark = SparkSession.builder.getOrCreate()
   tgt_df = read_tgt_df(spark)
-  print("1. tgt_df")
-  tgt_df.show()
+  print("1. TGT_DF")
+  tgt_df.show(4)
   print("row count: " + str(tgt_df.count()))
 
-  src_df = spark.createDataFrame(get_data(), schema2)
-  print("2. src_df")
-  src_df.show()
+  src_df = spark.createDataFrame(get_data(), schema_camel)
+  print("2. SRC_DF")
+  src_df.show(4)
   print("row count: " + str(src_df.count()))
 
   filtered = filter_by_hospitals_theme(src_df)
   print("3. filtered")
-  filtered.show()
+  filtered.show(4)
 
   case_converted = cols_to_snake_case(filtered)
   print("4. case_converted")
-  case_converted.show()
+  case_converted.show(4)
 
   new_tgt_df = upsert(tgt_df, case_converted)
   print("5. new_tgt_df")
-  new_tgt_df.show()
+  new_tgt_df.show(4)
+
   print("row count: " + str(new_tgt_df.count()))
 
   write_tgt_df(new_tgt_df)
   spark.stop()
 
 
-def main(data_location="data.csv"):
+def main(data_location="metadata.parquet"):
   #schedule.every(25).seconds.do(job)
   schedule.every().day.at("20:43:00", timezone("America/Chicago")).do(job)
   while True:
@@ -237,4 +320,4 @@ def main(data_location="data.csv"):
     time.sleep(1)
 
 #main()
-job()
+#job()
