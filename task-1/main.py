@@ -38,6 +38,7 @@ cols = [
   "next_update_date"
 ]
 
+
 schema = StructType([
   StructField('@type', StringType(), True),
   StructField('access_level', StringType(), True),
@@ -58,6 +59,7 @@ schema = StructType([
   StructField('archive_exclude', BooleanType(), True),
   StructField('next_update_date', StringType(), True)
 ])
+
 
 schema2 = StructType([
   StructField('@type', StringType(), True),
@@ -80,6 +82,7 @@ schema2 = StructType([
   StructField('nextUpdateDate', StringType(), True)
 ])
 
+
 schema_snake = StructType([
   StructField('@type', StringType(), True), 
   StructField('access_level', StringType(), True), 
@@ -100,6 +103,7 @@ schema_snake = StructType([
   StructField('archive_exclude', BooleanType(), True)
 ])
 
+
 schema_camel = StructType([
   StructField('@type', StringType(), True), 
   StructField('accessLevel', StringType(), True), 
@@ -119,9 +123,6 @@ schema_camel = StructType([
   StructField('nextUpdateDate', StringType(), True), 
   StructField('archiveExclude', BooleanType(), True)
 ])
-
-
-
 
 
 def get_data() -> list:
@@ -152,17 +153,18 @@ def cols_to_snake_case(df) -> None:
 
 
 def read_tgt_df(spark, data_location="metadata.parquet"):
-  return spark.read.csv(
-    data_location,
-    header=True,
-    schema=schema_snake
-    #inferSchema=True
-  )
-
+  return spark.read.parquet(data_location)
+  # return spark.read.csv(
+  #   data_location,
+  #   header=True,
+  #   schema=schema_snake
+  #   #inferSchema=True
+  # )
 
 def write_tgt_df(tgt_df, data_location="metadata.parquet"):
-  pandas_df = tgt_df.toPandas()
-  pandas_df.to_csv("metadata.parquet", index=False)
+  tgt_df.write.parquet(data_location, mode="overwrite", compression="snappy")
+  #pandas_df = tgt_df.toPandas()
+  #pandas_df.to_csv("metadata.parquet", index=False)
 
 
 def download2(df):
@@ -203,18 +205,7 @@ def download(df):
   for row in df.rdd.collect():
     print(row)
     downloadURL = row.distribution[0]['downloadURL']
-    identifier = row.identifier
-    output_filepath = identifier + ".csv"
-    # separator = ','
-    # pairs = re.split(separator, distribution.strip())
-    # for pair in pairs:
-    #   print("pair: " + pair)
-    #   pattern = r"downloadURL=(https?://\S+|www\.\S+)"
-    #   mtch = re.search(pattern, pair)
-    #   if mtch:
-    #     print("mtch.group(0): " + str(mtch.group(0)))
-    #     print("mtch.group(1): " + str(mtch.group(1)))
-    #     print(mtch.group(1))
+    output_filepath = row.identifier + ".csv"
     with requests.Session() as s:
       download = s.get(downloadURL)
       decoded_content = download.content.decode('utf-8')
@@ -320,4 +311,4 @@ def main(data_location="metadata.parquet"):
     time.sleep(1)
 
 #main()
-#job()
+job()
