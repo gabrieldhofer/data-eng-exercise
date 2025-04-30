@@ -209,7 +209,6 @@ def job():
   new_tgt_df = upsert(tgt_df, case_converted)
   print("5. new_tgt_df")
   new_tgt_df.show(4)
-
   print("row count: " + str(new_tgt_df.count()))
 
   write_tgt_df(new_tgt_df)
