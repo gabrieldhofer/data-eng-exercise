@@ -185,7 +185,7 @@ def upsert(tgt_df, src_df):
   return res
 
 
-def job():
+def job_debugging():
   """ Author: Gabriel Hofer """
   spark = SparkSession.builder.getOrCreate()
   tgt_df = read_tgt_df(spark)
@@ -215,8 +215,19 @@ def job():
   spark.stop()
 
 
+def job():
+  """ Author: Gabriel Hofer """
+  spark = SparkSession.builder.getOrCreate()
+  tgt_df = read_tgt_df(spark)
+  src_df = get_data(schema_camel)
+  filtered = filter_by_hospitals_theme(src_df)
+  case_converted = cols_to_snake_case(filtered)
+  new_tgt_df = upsert(tgt_df, case_converted)
+  write_tgt_df(new_tgt_df)
+  spark.stop()
+
+
 def main(data_location="metadata.parquet"):
-  #schedule.every(25).seconds.do(job)
   schedule.every().day.at("20:43:00", timezone("America/Chicago")).do(job)
   while True:
     schedule.run_pending()
