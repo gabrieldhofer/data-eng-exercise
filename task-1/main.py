@@ -13,7 +13,6 @@ import datetime
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
 from pyspark.sql.functions import col
 import pandas
-from pyspark.sql import Row
 import csv
 
 
