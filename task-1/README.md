@@ -18,30 +18,30 @@ Usage:
 This program was developed in Google Colab.
 
 Install dependencies:
-
+```bash
     $ pip install -r ./requirements.txt
 
     $ make clean
 
     $ make init
-
+```
 Then, run the "make" command to run main.py.
-
+```bash
     $ make
-
+```
 
 Scheduling
 ----------
-
+```python
     def main(data_location="metadata.parquet"):
       schedule.every().day.at("20:43:00", timezone("America/Chicago")).do(job)
       while True:
         schedule.run_pending()
         time.sleep(1)
-
+```
 Job
 ---
-
+```python
     def job():
       """ Author: Gabriel Hofer """
       spark = SparkSession.builder.getOrCreate()
@@ -52,23 +52,24 @@ Job
       new_tgt_df = upsert(tgt_df, case_converted)
       write_tgt_df(new_tgt_df)
       spark.stop()
-
+```
 Reading & Writing DataFrames
 ----------------------------
-
+```python
     def read_tgt_df(spark, data_location="metadata.parquet"):
       return spark.read.schema(schema_snake).parquet(data_location)
     
     
     def write_tgt_df(tgt_df, data_location="metadata.parquet"):
       tgt_df.write.parquet(data_location, mode="overwrite", compression="snappy")
-
+```
 Convert cols to Snake Case
 --------------------------
-    
+```python    
     def cols_to_snake_case(df) -> None:
       """ convert column names to snake case """
       for col in df.columns:
         new_col = re.sub(r"(?<!^)(?=[A-Z])", "_", col).lower()
         df = df.withColumnRenamed(col, new_col)
       return df
+```
