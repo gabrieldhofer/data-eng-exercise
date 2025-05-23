@@ -1,8 +1,12 @@
 data-engineering-assessment
-===========================
+---------------------------
 
-Description
------------
+### Table of Contents
+1. [Description](#Description)
+2. [Usage](#Usage)
+3. [Scheduling](#Scheduling)
+
+#### Description
 
 Given the CMS provider data metastore, write a script that downloads all data sets related to the theme "Hospitals".
 
@@ -12,12 +16,12 @@ The csv files should be downloaded and processed in parallel, and the job should
 
 https://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items
 
-Usage:
-------
+#### Usage:
 
 This program was developed in Google Colab.
 
 Install dependencies:
+
 ```bash
     $ pip install -r ./requirements.txt
 
@@ -30,8 +34,8 @@ Then, run the "make" command to run main.py.
     $ make
 ```
 
-Scheduling
-----------
+#### Scheduling
+
 ```python
     def main(data_location="metadata.parquet"):
       schedule.every().day.at("20:43:00", timezone("America/Chicago")).do(job)
@@ -39,8 +43,9 @@ Scheduling
         schedule.run_pending()
         time.sleep(1)
 ```
-Job
----
+
+#### Job
+
 ```python
     def job():
       """ Author: Gabriel Hofer """
@@ -53,18 +58,19 @@ Job
       write_tgt_df(new_tgt_df)
       spark.stop()
 ```
-Reading & Writing DataFrames
-----------------------------
+
+#### Reading & Writing DataFrames
+
 ```python
     def read_tgt_df(spark, data_location="metadata.parquet"):
       return spark.read.schema(schema_snake).parquet(data_location)
     
-    
     def write_tgt_df(tgt_df, data_location="metadata.parquet"):
       tgt_df.write.parquet(data_location, mode="overwrite", compression="snappy")
 ```
-Convert cols to Snake Case
---------------------------
+
+#### Convert cols to Snake Case
+
 ```python    
     def cols_to_snake_case(df) -> None:
       """ convert column names to snake case """
