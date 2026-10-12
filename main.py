@@ -85,30 +85,8 @@ def filter_by_hospitals_theme(df) -> list:
   return df.filter(array_contains(df.theme, 'Hospitals'))
 
 
-def get_inserts(new_metadata_df, metadata_df):
-  src_cols = ["a." + x for x in cols]
-  return new_metadata_df.alias("a")\
-    .join(metadata_df.alias("b"), on="identifier", how="left_anti")\
-    .select(*src_cols)
-
-
-def get_updates(new_metadata_df, metadata_df):
-  src_cols = ["a." + x for x in cols]
-  return new_metadata_df.alias("a")\
-    .join(metadata_df.alias("b"), on="identifier", how="inner")\
-    .filter(col("a.modified") > col("b.modified"))\
-    .select(*src_cols) #, "tgt.modified")
-
-
-def get_unchanged(new_metadata_df, metadata_df):
-  tgt_cols = ["tgt." + x for x in cols]
-  return metadata_df.alias("tgt")\
-    .join(new_metadata_df.alias("src"), on="identifier", how="left_anti")
-    #.select(*tgt_cols)
-
-
 def update_metadata(df, data_location="metadata.parquet"):
-  print("size of dataframe being written: " + str(df.size))
+  print("size of dataframe being written: " + str(df.count()))
   df.write.parquet(data_location, mode="overwrite", compression="snappy")
 
 
@@ -155,6 +133,29 @@ def parallel_download(df):
   df.rdd.map(download_row)
 
 
+def get_inserts(new_metadata_df, metadata_df):
+  src_cols = ["a." + x for x in cols]
+  return new_metadata_df.alias("a")\
+    .join(metadata_df.alias("b"), on="identifier", how="left_anti")\
+    .select(*src_cols)
+
+
+def get_updates(new_metadata_df, metadata_df):
+  src_cols = ["a." + x for x in cols]
+  return new_metadata_df.alias("a")\
+    .join(metadata_df.alias("b"), on="identifier", how="inner")\
+    .filter(col("a.modified") > col("b.modified"))\
+    .select(*src_cols) #, "tgt.modified")
+
+
+def get_unchanged(new_metadata_df, metadata_df):
+  tgt_cols = ["a." + x for x in cols]
+  return metadata_df.alias("a")\
+    .join(new_metadata_df.alias("b"), on="identifier", how="inner")\
+    .filter(col("a.modified") == col("b.modified"))\
+    .select(*tgt_cols)
+
+
 def job(data_location: str="metadata.parquet"):
   metadata_df = load_metadata(data_location)
   new_metadata_df = filter_by_hospitals_theme(get_metadata())
@@ -178,9 +179,10 @@ def job(data_location: str="metadata.parquet"):
   #parallel_download(inserts.union(updates))
   unioned1 = inserts.unionByName(updates)
   unioned2 = unioned1.unionByName(unioned1)
-  unioned2.show()
-  df_clean = unioned2.distinct()
-  update_metadata(df_clean)
+  unioned3 = unioned2.unionByName(unchanged)
+  unioned3.show()
+  #df_clean = unioned2.distinct()
+  update_metadata(unioned3)
 
 
 job()
