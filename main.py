@@ -45,7 +45,6 @@ cols = [
   "next_update_date"
 ]
 
-
 from pyspark.sql import SparkSession
 import requests
 from pyspark.sql.functions import array_contains
@@ -110,7 +109,9 @@ def download(df):
 
 
 def download_row(row):
+  print("function: download_row")
   print(row)
+  time.sleep(2)
   downloadURL = row.distribution[0]['downloadURL']
   print(f"downloadURL: {downloadURL}")
   output_filepath = row.identifier + ".csv"
@@ -128,9 +129,9 @@ def download_row(row):
 
 def parallel_download(df):
   """ Author: Gabriel Hofer """
-  print("downloading in 5 seconds...")
-  time.sleep(5)
-  df.rdd.map(download_row)
+  print("downloading in 1 second...")
+  time.sleep(1)
+  df.rdd.map(download_row).collect()
 
 
 def get_inserts(new_metadata_df, metadata_df):
@@ -174,13 +175,13 @@ def job(data_location: str="metadata.parquet"):
   print("UNCHANGED")
   unchanged.show(4)
   
-  #download(inserts)
-  #download(updates)
-  #parallel_download(inserts.union(updates))
+
+  
   unioned1 = inserts.unionByName(updates)
   unioned2 = unioned1.unionByName(unioned1)
   unioned3 = unioned2.unionByName(unchanged)
   unioned3.show()
+  parallel_download(inserts.union(updates))
   #df_clean = unioned2.distinct()
   update_metadata(unioned3)
 
