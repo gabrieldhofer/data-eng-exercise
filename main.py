@@ -1,20 +1,28 @@
-import requests
-import json
-import time
-from pyspark.sql import SparkSession
-from pyspark.sql import Row
-from pyspark.sql.functions import array_contains
-from pyspark.sql import DataFrame
-import re
-from pyspark.sql.functions import current_timestamp
-import schedule
-from pytz import timezone
-import datetime
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
-from pyspark.sql.functions import col
-import pandas
-import csv
+!pip install pyspark
+!pip install schedule
 
+
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
+
+metadata_schema = StructType([
+  StructField('@type', StringType(), True),
+  StructField('access_level', StringType(), True),
+  StructField('bureau_code', ArrayType(StringType(), True), True),
+  StructField('contact_point', MapType(StringType(), StringType(), True), True),
+  StructField('description', StringType(), True),
+  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True),
+  StructField('identifier', StringType(), True), StructField('issued', StringType(), True),
+  StructField('keyword', ArrayType(StringType(), True), True),
+  StructField('landing_page', StringType(), True),
+  StructField('modified', StringType(), True),
+  StructField('program_code', ArrayType(StringType(), True), True),
+  StructField('publisher', MapType(StringType(), StringType(), True), True),
+  StructField('released', StringType(), True),
+  StructField('theme', ArrayType(StringType(), True), True),
+  StructField('title', StringType(), True),
+  StructField('next_update_date', StringType(), True),
+  StructField('archive_exclude', BooleanType(), True)
+])
 
 cols = [
   "@type",
@@ -38,59 +46,38 @@ cols = [
 ]
 
 
-schema_snake = StructType([
-  StructField('@type', StringType(), True),
-  StructField('access_level', StringType(), True),
-  StructField('bureau_code', ArrayType(StringType(), True), True),
-  StructField('contact_point', MapType(StringType(), StringType(), True), True),
-  StructField('description', StringType(), True),
-  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True),
-  StructField('identifier', StringType(), True), StructField('issued', StringType(), True),
-  StructField('keyword', ArrayType(StringType(), True), True),
-  StructField('landing_page', StringType(), True),
-  StructField('modified', StringType(), True),
-  StructField('program_code', ArrayType(StringType(), True), True),
-  StructField('publisher', MapType(StringType(), StringType(), True), True),
-  StructField('released', StringType(), True),
-  StructField('theme', ArrayType(StringType(), True), True),
-  StructField('title', StringType(), True),
-  StructField('next_update_date', StringType(), True),
-  StructField('archive_exclude', BooleanType(), True)
-])
+from pyspark.sql import SparkSession
+import requests
+from pyspark.sql.functions import array_contains
+from pyspark.sql.functions import col
+import time
+import csv
 
 
-schema_camel = StructType([
-  StructField('@type', StringType(), True),
-  StructField('accessLevel', StringType(), True),
-  StructField('bureauCode', ArrayType(StringType(), True), True),
-  StructField('contactPoint', MapType(StringType(), StringType(), True), True),
-  StructField('description', StringType(), True),
-  StructField('distribution', ArrayType(MapType(StringType(), StringType(), True), True), True),
-  StructField('identifier', StringType(), True), StructField('issued', StringType(), True),
-  StructField('keyword', ArrayType(StringType(), True), True),
-  StructField('landingPage', StringType(), True),
-  StructField('modified', StringType(), True),
-  StructField('programCode', ArrayType(StringType(), True), True),
-  StructField('publisher', MapType(StringType(), StringType(), True), True),
-  StructField('released', StringType(), True),
-  StructField('theme', ArrayType(StringType(), True), True),
-  StructField('title', StringType(), True),
-  StructField('nextUpdateDate', StringType(), True),
-  StructField('archiveExclude', BooleanType(), True)
-])
+spark = SparkSession.builder.getOrCreate()
 
 
-def get_data(schema):
+def get_metadata():
   """ Retrieve data via HTTP GET request """
-  URL = "http://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items"
-  response = requests.get(URL)
+  url = "http://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items"
+  response = requests.get(url)
   if response.status_code == 200:
     try:
-      return spark.createDataFrame(response.json(), schema)
+      return spark.createDataFrame(response.json(), metadata_schema)
     except ValueError:
       print("Response is not in JSON format")
   else:
     print(f"Request failed with status code {response.status.code}")
+
+
+def load_metadata(data_location: str):
+  """ Read data frome file, inferring schema """
+  try:
+    print(f"LOADING {data_location}")
+    return spark.read.schema(metadata_schema).parquet(data_location)
+  except Exception as e: # file doesn't exist return empty DF
+    print("ERROR LOADING METADATA_SCHEMA")
+    return spark.createDataFrame(spark.sparkContext.emptyRDD(), metadata_schema)
 
 
 def filter_by_hospitals_theme(df) -> list:
@@ -98,29 +85,39 @@ def filter_by_hospitals_theme(df) -> list:
   return df.filter(array_contains(df.theme, 'Hospitals'))
 
 
-def cols_to_snake_case(df) -> None:
-  """ convert column names to snake case """
-  for col in df.columns:
-    new_col = re.sub(r"(?<!^)(?=[A-Z])", "_", col).lower()
-    df = df.withColumnRenamed(col, new_col)
-  return df
+def get_inserts(new_metadata_df, metadata_df):
+  src_cols = ["a." + x for x in cols]
+  return new_metadata_df.alias("a")\
+    .join(metadata_df.alias("b"), on="identifier", how="left_anti")\
+    .select(*src_cols)
 
 
-def read_tgt_df(spark, data_location="metadata.parquet"):
-  return spark.read.schema(schema_snake).parquet(data_location)
+def get_updates(new_metadata_df, metadata_df):
+  src_cols = ["a." + x for x in cols]
+  return new_metadata_df.alias("a")\
+    .join(metadata_df.alias("b"), on="identifier", how="inner")\
+    .filter(col("a.modified") > col("b.modified"))\
+    .select(*src_cols) #, "tgt.modified")
 
 
-def write_tgt_df(tgt_df, data_location="metadata.parquet"):
-  tgt_df.write.parquet(data_location, mode="overwrite", compression="snappy")
+def get_unchanged(new_metadata_df, metadata_df):
+  tgt_cols = ["tgt." + x for x in cols]
+  return metadata_df.alias("tgt")\
+    .join(new_metadata_df.alias("src"), on="identifier", how="left_anti")
+    #.select(*tgt_cols)
+
+
+def update_metadata(df, data_location="metadata.parquet"):
+  print("size of dataframe being written: " + str(df.size))
+  df.write.parquet(data_location, mode="overwrite", compression="snappy")
 
 
 def download(df):
   """ Author: Gabriel Hofer """
-  print("downloading in 5 seconds...")
-  time.sleep(5)
   for row in df.rdd.collect():
     print(row)
     downloadURL = row.distribution[0]['downloadURL']
+    print(f"downloadURL: {downloadURL}")
     output_filepath = row.identifier + ".csv"
     with requests.Session() as s:
       download = s.get(downloadURL)
@@ -128,80 +125,63 @@ def download(df):
       cr = csv.reader(decoded_content.splitlines(), delimiter=',')
       with open(output_filepath, 'w', newline='') as outfile:
         writer = csv.writer(outfile)
-        my_list = list(cr)
-        for row in my_list:
+        for row in list(cr):
           writer.writerow(row)
           print("writing row to file:" + str(row))
+    time.sleep(4)
 
 
-def upsert(tgt_df, src_df):
-  """
-    Author: Gabriel Hofer
-
-    This function 'merges' the source data to the target data.
-
-    The source dataframe is the data that was retrieved via the most recent
-    HTTP request.
-
-    The target dataframe is read from a file stored locally.
-
-    If there are records not in the target dataframe but they do exist in the
-    source dataframe, those new records are added to the target df.
-
-    if there are records in the target and source dataframes with matching
-    'identifiers' (column), then the record with the most recent 'modified'
-    value is stored back into the resulting target dataframe.
-
-    Records are not deleted from the target or the source, i.e. the
-    target dataframe and number of rows stored locally is always the same
-    or increasing.
-
-  """
-  inserts = src_df.alias("src")\
-    .join(tgt_df.alias("tgt"), on="identifier", how="left_anti")
-
-  updates = src_df.alias("src")\
-    .join(tgt_df.alias("tgt"), on="identifier", how="inner")\
-    .filter(col("src.modified") >= col("tgt.modified"))
-
-  unchanged = tgt_df.alias("tgt")\
-    .join(src_df.alias("src"), on="identifier", how="left_anti")
-
-  src_cols = ["src." + x for x in cols]
-  tgt_cols = ["tgt." + x for x in cols]
-
-  inserts = inserts.select(*src_cols)
-  updates = updates.select(*src_cols)
-  unchanged = unchanged.select(*tgt_cols)
-
-  download(inserts)
-  download(updates)
-
-  try:
-    res = inserts.union(updates).union(unchanged)
-  except Exception as e:
-    print(e)
-  return res
+def download_row(row):
+  print(row)
+  downloadURL = row.distribution[0]['downloadURL']
+  print(f"downloadURL: {downloadURL}")
+  output_filepath = row.identifier + ".csv"
+  with requests.Session() as s:
+    download = s.get(downloadURL)
+    decoded_content = download.content.decode('utf-8')
+    cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+    with open(output_filepath, 'w', newline='') as outfile:
+      writer = csv.writer(outfile)
+      for row in list(cr):
+        writer.writerow(row)
+        print("writing row to file:" + str(row))
+  time.sleep(4)
 
 
-def job():
+def parallel_download(df):
   """ Author: Gabriel Hofer """
-  spark = SparkSession.builder.getOrCreate()
-  tgt_df = read_tgt_df(spark)
-  src_df = get_data(schema_camel)
-  filtered = filter_by_hospitals_theme(src_df)
-  case_converted = cols_to_snake_case(filtered)
-  new_tgt_df = upsert(tgt_df, case_converted)
-  write_tgt_df(new_tgt_df)
-  spark.stop()
+  print("downloading in 5 seconds...")
+  time.sleep(5)
+  df.rdd.map(download_row)
 
 
-def main(data_location="metadata.parquet"):
-  schedule.every().day.at("20:43:00", timezone("America/Chicago")).do(job)
-  while True:
-    schedule.run_pending()
-    time.sleep(1)
+def job(data_location: str="metadata.parquet"):
+  metadata_df = load_metadata(data_location)
+  new_metadata_df = filter_by_hospitals_theme(get_metadata())
+  inserts = get_inserts(new_metadata_df, metadata_df)
+  updates = get_updates(new_metadata_df, metadata_df)
+  unchanged = get_unchanged(new_metadata_df, metadata_df)
+
+  print("METADATA DF")
+  metadata_df.show(4)
+  print("NEW METADATA DF")
+  new_metadata_df.show(4)
+  print("INSERTS")
+  inserts.show(4)
+  print("UPDATES")
+  updates.show(4)
+  print("UNCHANGED")
+  unchanged.show(4)
+  
+  #download(inserts)
+  #download(updates)
+  #parallel_download(inserts.union(updates))
+  unioned1 = inserts.unionByName(updates)
+  unioned2 = unioned1.unionByName(unioned1)
+  unioned2.show()
+  df_clean = unioned2.distinct()
+  update_metadata(df_clean)
 
 
-#main()
 job()
+
