@@ -46,14 +46,15 @@ cols = [
 ]
 
 
-
-
 from pyspark.sql import SparkSession
 import requests
 from pyspark.sql.functions import array_contains
 from pyspark.sql.functions import col
 import time
 import csv
+import schedule
+from pytz import timezone
+import datetime
 
 
 spark = SparkSession.builder.getOrCreate()
@@ -92,13 +93,13 @@ def update_metadata(df, data_location="metadata.parquet"):
   df.write.parquet(data_location, mode="overwrite", compression="snappy")
 
 
-def download_row(row):
+def download_row(row, dir: str="downloads_hospitals"):
   print("function: download_row")
   print(row)
   time.sleep(2)
   downloadURL = row.distribution[0]['downloadURL']
   print(f"downloadURL: {downloadURL}")
-  output_filepath = row.identifier + ".csv"
+  output_filepath = f"{dir}/{row.identifier}.csv"
   with requests.Session() as s:
     download = s.get(downloadURL)
     decoded_content = download.content.decode('utf-8')
@@ -107,7 +108,6 @@ def download_row(row):
       writer = csv.writer(outfile)
       for row in list(cr):
         writer.writerow(row)
-        print("writing row to file:" + str(row))
   time.sleep(4)
 
 
@@ -119,29 +119,26 @@ def parallel_download(df):
 
 
 def get_inserts(new_metadata_df, metadata_df):
-  src_cols = ["a." + x for x in cols]
   return new_metadata_df.alias("a")\
     .join(metadata_df.alias("b"), on="identifier", how="left_anti")\
     .select(*src_cols)
 
 
 def get_updates(new_metadata_df, metadata_df):
-  src_cols = ["a." + x for x in cols]
   return new_metadata_df.alias("a")\
     .join(metadata_df.alias("b"), on="identifier", how="inner")\
     .filter(col("a.modified") > col("b.modified"))\
-    .select(*src_cols) #, "tgt.modified")
+    .select(*src_cols)
 
 
 def get_unchanged(new_metadata_df, metadata_df):
-  tgt_cols = ["a." + x for x in cols]
   return metadata_df.alias("a")\
     .join(new_metadata_df.alias("b"), on="identifier", how="inner")\
     .filter(col("a.modified") == col("b.modified"))\
     .select(*tgt_cols)
 
 
-def preview_data():
+def preview_data(metadata_df, new_metadata_df, inserts, updates, unchanged):
   print("METADATA DF")
   metadata_df.show(4)
   print("NEW METADATA DF")
@@ -168,11 +165,21 @@ def job(data_location: str="metadata.parquet"):
   inserts = get_inserts(new_metadata_df, metadata_df)
   updates = get_updates(new_metadata_df, metadata_df)
   unchanged = get_unchanged(new_metadata_df, metadata_df)
-  preview_data()
+  preview_data(metadata_df, new_metadata_df, inserts, updates, unchanged)
   parallel_download(inserts.union(updates))
   #df_clean = unioned2.distinct()
   update_metadata(union_dfs(inserts, updates, unchanged))
 
 
-job()
+# job()
 
+
+def main(data_location="metadata.parquet"):
+  schedule.every().day.at("10:11:55", timezone("America/Chicago")).do(job)
+  while True:
+    schedule.run_pending()
+    time.sleep(10)
+    print(datetime.datetime.now())
+
+
+main()
