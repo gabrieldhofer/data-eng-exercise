@@ -58,7 +58,6 @@ cols = [
 ]
 
 
-
 spark = SparkSession.builder.getOrCreate()
 
 
