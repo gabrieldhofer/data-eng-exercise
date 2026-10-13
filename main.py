@@ -12,6 +12,7 @@ import csv
 import schedule
 from pytz import timezone
 import datetime
+import re
 
 
 metadata_schema = StructType([
@@ -34,6 +35,7 @@ metadata_schema = StructType([
   StructField('archive_exclude', BooleanType(), True)
 ])
 
+
 cols = [
   "@type",
   "access_level",
@@ -54,6 +56,7 @@ cols = [
   "archive_exclude",
   "next_update_date"
 ]
+
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -102,9 +105,15 @@ def download_row(row, dir: str="downloads_hospitals"):
     download = s.get(downloadURL)
     decoded_content = download.content.decode('utf-8')
     cr = csv.reader(decoded_content.splitlines(), delimiter=',')
+    try:
+      header = next(cr)
+    except StopIteration:
+      pass
+    new_header = [to_snake_case(col) for col in header]
     with open(output_filepath, 'w', newline='') as outfile:
       writer = csv.writer(outfile)
-      for row in list(cr):
+      writer.writerow(new_header)
+      for row in cr:
         writer.writerow(row)
   time.sleep(4)
 
@@ -157,6 +166,11 @@ def union_dfs(inserts, updates, unchanged):
   return unioned3
 
 
+# Helper function for snake_case
+def to_snake_case(name):
+  return re.sub(r"[^a-z0-9]+", "_", name.strip().lower())
+
+
 def job(data_location: str="metadata.parquet"):
   metadata_df = load_metadata(data_location)
   new_metadata_df = filter_by_hospitals_theme(get_metadata())
@@ -169,6 +183,9 @@ def job(data_location: str="metadata.parquet"):
   update_metadata(union_dfs(inserts, updates, unchanged))
 
 
+job()
+
+
 def main(data_location="metadata.parquet"):
   schedule.every().day.at("10:11:55", timezone("America/Chicago")).do(job)
   while True:
@@ -177,4 +194,8 @@ def main(data_location="metadata.parquet"):
     print(datetime.datetime.now())
 
 
-main()
+#main()
+
+
+
+
