@@ -3,6 +3,16 @@
 
 
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, ArrayType, MapType, BooleanType
+from pyspark.sql import SparkSession
+import requests
+from pyspark.sql.functions import array_contains
+from pyspark.sql.functions import col
+import time
+import csv
+import schedule
+from pytz import timezone
+import datetime
+
 
 metadata_schema = StructType([
   StructField('@type', StringType(), True),
@@ -44,18 +54,6 @@ cols = [
   "archive_exclude",
   "next_update_date"
 ]
-
-
-from pyspark.sql import SparkSession
-import requests
-from pyspark.sql.functions import array_contains
-from pyspark.sql.functions import col
-import time
-import csv
-import schedule
-from pytz import timezone
-import datetime
-
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -169,9 +167,6 @@ def job(data_location: str="metadata.parquet"):
   parallel_download(inserts.union(updates))
   #df_clean = unioned2.distinct()
   update_metadata(union_dfs(inserts, updates, unchanged))
-
-
-# job()
 
 
 def main(data_location="metadata.parquet"):
