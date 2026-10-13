@@ -159,7 +159,6 @@ def union_dfs(inserts, updates, unchanged):
   unioned1 = inserts.unionByName(updates)
   unioned2 = unioned1.unionByName(unioned1)
   unioned3 = unioned2.unionByName(unchanged)
-  unioned3.show()
   return unioned3
 
 
