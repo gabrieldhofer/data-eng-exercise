@@ -45,6 +45,9 @@ cols = [
   "next_update_date"
 ]
 
+
+
+
 from pyspark.sql import SparkSession
 import requests
 from pyspark.sql.functions import array_contains
@@ -157,13 +160,7 @@ def get_unchanged(new_metadata_df, metadata_df):
     .select(*tgt_cols)
 
 
-def job(data_location: str="metadata.parquet"):
-  metadata_df = load_metadata(data_location)
-  new_metadata_df = filter_by_hospitals_theme(get_metadata())
-  inserts = get_inserts(new_metadata_df, metadata_df)
-  updates = get_updates(new_metadata_df, metadata_df)
-  unchanged = get_unchanged(new_metadata_df, metadata_df)
-
+def preview_data():
   print("METADATA DF")
   metadata_df.show(4)
   print("NEW METADATA DF")
@@ -174,16 +171,27 @@ def job(data_location: str="metadata.parquet"):
   updates.show(4)
   print("UNCHANGED")
   unchanged.show(4)
-  
 
-  
+
+def union_dfs(inserts, updates, unchanged):
   unioned1 = inserts.unionByName(updates)
   unioned2 = unioned1.unionByName(unioned1)
   unioned3 = unioned2.unionByName(unchanged)
   unioned3.show()
+  return unioned3
+
+
+def job(data_location: str="metadata.parquet"):
+  metadata_df = load_metadata(data_location)
+  new_metadata_df = filter_by_hospitals_theme(get_metadata())
+  inserts = get_inserts(new_metadata_df, metadata_df)
+  updates = get_updates(new_metadata_df, metadata_df)
+  unchanged = get_unchanged(new_metadata_df, metadata_df)
+  preview_data()
+  unioned = union_dfs
   parallel_download(inserts.union(updates))
   #df_clean = unioned2.distinct()
-  update_metadata(unioned3)
+  update_metadata(unioned)
 
 
 job()
