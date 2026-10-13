@@ -92,25 +92,6 @@ def update_metadata(df, data_location="metadata.parquet"):
   df.write.parquet(data_location, mode="overwrite", compression="snappy")
 
 
-def download(df):
-  """ Author: Gabriel Hofer """
-  for row in df.rdd.collect():
-    print(row)
-    downloadURL = row.distribution[0]['downloadURL']
-    print(f"downloadURL: {downloadURL}")
-    output_filepath = row.identifier + ".csv"
-    with requests.Session() as s:
-      download = s.get(downloadURL)
-      decoded_content = download.content.decode('utf-8')
-      cr = csv.reader(decoded_content.splitlines(), delimiter=',')
-      with open(output_filepath, 'w', newline='') as outfile:
-        writer = csv.writer(outfile)
-        for row in list(cr):
-          writer.writerow(row)
-          print("writing row to file:" + str(row))
-    time.sleep(4)
-
-
 def download_row(row):
   print("function: download_row")
   print(row)
