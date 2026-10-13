@@ -58,7 +58,6 @@ cols = [
 ]
 
 
-qual_cols = ["a." + x for x in cols]
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -125,12 +124,14 @@ def parallel_download(df):
 
 
 def get_inserts(new_metadata_df, metadata_df):
+  qual_cols = ["a." + x for x in cols]
   return new_metadata_df.alias("a")\
     .join(metadata_df.alias("b"), on="identifier", how="left_anti")\
     .select(*qual_cols)
 
 
 def get_updates(new_metadata_df, metadata_df):
+  qual_cols = ["a." + x for x in cols]
   return new_metadata_df.alias("a")\
     .join(metadata_df.alias("b"), on="identifier", how="inner")\
     .filter(col("a.modified") > col("b.modified"))\
@@ -138,6 +139,7 @@ def get_updates(new_metadata_df, metadata_df):
 
 
 def get_unchanged(new_metadata_df, metadata_df):
+  qual_cols = ["a." + x for x in cols]
   return metadata_df.alias("a")\
     .join(new_metadata_df.alias("b"), on="identifier", how="inner")\
     .filter(col("a.modified") == col("b.modified"))\
