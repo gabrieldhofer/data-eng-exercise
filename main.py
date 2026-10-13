@@ -95,11 +95,8 @@ def update_metadata(df, data_location="metadata.parquet"):
 
 
 def download_row(row, dir: str="downloads_hospitals"):
-  print("function: download_row")
-  print(row)
   time.sleep(2)
   downloadURL = row.distribution[0]['downloadURL']
-  print(f"downloadURL: {downloadURL}")
   output_filepath = f"{dir}/{row.identifier}.csv"
   with requests.Session() as s:
     download = s.get(downloadURL)
