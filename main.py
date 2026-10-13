@@ -188,10 +188,9 @@ def job(data_location: str="metadata.parquet"):
   updates = get_updates(new_metadata_df, metadata_df)
   unchanged = get_unchanged(new_metadata_df, metadata_df)
   preview_data()
-  unioned = union_dfs
   parallel_download(inserts.union(updates))
   #df_clean = unioned2.distinct()
-  update_metadata(unioned)
+  update_metadata(union_dfs(inserts, updates, unchanged))
 
 
 job()
