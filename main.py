@@ -166,7 +166,6 @@ def union_dfs(inserts, updates, unchanged):
   return unioned3
 
 
-# Helper function for snake_case
 def to_snake_case(name):
   return re.sub(r"[^a-z0-9]+", "_", name.strip().lower())
 
