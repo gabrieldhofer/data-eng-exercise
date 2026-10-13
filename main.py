@@ -183,9 +183,6 @@ def job(data_location: str="metadata.parquet"):
   update_metadata(union_dfs(inserts, updates, unchanged))
 
 
-job()
-
-
 def main(data_location="metadata.parquet"):
   schedule.every().day.at("10:11:55", timezone("America/Chicago")).do(job)
   while True:
@@ -194,8 +191,4 @@ def main(data_location="metadata.parquet"):
     print(datetime.datetime.now())
 
 
-#main()
-
-
-
-
+main()
